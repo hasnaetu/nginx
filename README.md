@@ -1,4 +1,6 @@
-# Basic Nginx
+# Nginx
+
+This is the official nginx repository for Singularity Hub
 
 This is an example of using a Singularity container to run a basic nginx server, and serve one or more files. Download the repo if you haven't already:
 
