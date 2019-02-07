@@ -77,8 +77,7 @@ Create a Google Project and [a service account](https://cloud.google.com/sdk/doc
 ### 1. Download the Service Account Key
 
 You should first download a service account key from the [service accounts page](https://console.cloud.google.com/iam-admin/serviceaccounts?_ga=2.213389911.-231410963.1512057989). For the roles, add an admin for Google
-Storage (to store your container). If you want to use the Google Cloud Builder (a similar
-configuration, example at [nginx](https://www.github.com/singularityhub/nginx)) then you can also add Google Build. 
+Storage (to store your container), along with Storage Object Admin and Google Build Admin.
 
 ![img/service-account.png](img/service-account.png)
 
