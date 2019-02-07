@@ -1,0 +1,12 @@
+# In this directory, run the following command to build this builder.
+# $ gcloud builds submit . --config=cloudbuild.yaml --substitutions=_SINGULARITY_VERSION=3.0.0."
+
+## TODO: need to come up with complete path here
+
+steps:
+- name: gcr.io/${GOOGLE_PROJECT_ID}/singularity-${_SINGULARITY_VERSION}
+  args: ['build', '${CONTAINER_NAME}', '${recipe}']
+artifacts:
+  objects:
+    location: 'gs://sregistry-${GOOGLE_PROJECT_ID}'
+    paths: ['${CONTAINER_PATH}/${CONTAINER_NAME}']

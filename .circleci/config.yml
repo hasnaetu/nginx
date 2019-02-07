@@ -1,0 +1,217 @@
+# Python CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-python/ for more details
+# 
+# Environment: Don't forget to add:
+# GOOGLE_APPLICATION_CREDENTIALS      $(cat <credential-file>.json)	
+# GOOGLE_COMPUTE_ZONE	              defaults to us-west1-a	
+# SREGISTRY_GOOGLE_PROJECT                   (grab from browser url)
+
+version: 2
+
+defaults: &defaults
+
+    # Set working directory where repository is cloned
+    working_directory: ~/repo
+    machine: true
+
+    # Environment Variables
+    environment:
+
+      # The GitHub username / reponame that the container will be submit to
+      - REGISTRY_BASE: singularityhub/registry-org
+
+      # Defaults for Google Storage with sregistry
+      - SREGISTRY_CLIENT: google-storage
+
+      # Templates for the manifest, tags, and collection for the pull request
+      - MANIFEST_TEMPLATE: https://raw.githubusercontent.com/singularityhub/registry-org/master/_templates/MANIFEST_TEMPLATE.md
+      - TAGS_TEMPLATE: https://raw.githubusercontent.com/singularityhub/registry-org/master/_templates/TAGS_TEMPLATE.md
+      - COLLECTION_TEMPLATE: https://raw.githubusercontent.com/singularityhub/registry-org/master/_templates/COLLECTION_TEMPLATE.md
+
+
+# Here is where we check and set environment variables
+env: &env
+    name: Check for Environment Variables
+    command: |
+        if [ -z "${SREGISTRY_GOOGLE_PROJECT}" ]; then
+              echo "Please export SREGISTRY_GOOGLE_PROJECT"
+              exit 1
+        fi
+        if [ -z "${SREGISTRY_GOOGLE_STORAGE_BUCKET}" ]; then
+            SREGISTRY_GOOGLE_STORAGE_BUCKET="sregistry-${SREGISTRY_GOOGLE_PROJECT}"
+        fi
+        if [ -z "${GOOGLE_COMPUTE_ZONE}" ]; then
+            GOOGLE_COMPUTE_ZONE="us-west1-a"
+        fi
+        echo "export SREGISTRY_GOOGLE_PROJECT=${SREGISTRY_GOOGLE_PROJECT}" >> ${BASH_ENV}
+        echo "export SREGISTRY_GOOGLE_STORAGE_BUCKET=${SREGISTRY_GOOGLE_STORAGE_BUCKET}" >> ${BASH_ENV}
+        echo "export GOOGLE_COMPUTE_ZONE=${GOOGLE_COMPUTE_ZONE}" >> ${BASH_ENV}
+
+install: &install
+    name: Install Google Cloud SDK
+    command: |
+        source ${BASH_ENV}
+        echo $GOOGLE_APPLICATION_CREDENTIALS > /tmp/pancakes.json
+        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/pancakes.json
+        # Create environment variable for correct distribution
+        export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
+        # Add the Cloud SDK distribution URI as a package source
+        echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+        # Import the Google Cloud Platform public key
+        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+        # Update the package list and install the Cloud SDK
+        sudo apt-get update && sudo apt-get install google-cloud-sdk
+        sudo gcloud --quiet components update
+        sudo gcloud services enable compute.googleapis.com
+        sudo gcloud services enable cloudbuild.googleapis.com
+        sudo gcloud services enable containerregistry.googleapis.com
+
+createbuilder: &createbuilder
+    name: Create the Google Cloud Build (Builder)
+    command: |
+        source ${BASH_ENV}
+        cd ~/repo/.circleci/builder
+        echo "Running custom build step to create Google Cloud Builder"
+        gcloud builds submit --config=builder.yaml --substitutions=_SINGULARITY_VERSION="3.0.2",GOOGLE_PROJECT_ID=${GOOGLE_CLOUD_PROJECT} .
+
+jobs:
+  build:
+    <<: *defaults  
+    steps:
+      - checkout
+      - run: *env
+      - run: *install
+      - run: *createbuilder  
+      - run:
+          name: Get Templates
+          command: |
+              echo "Download Manifest, Tags, and Collection Templates!"
+              mkdir -p ~/repo/.templates
+              wget -O ~/repo/.templates/MANIFEST_TEMPLATE.md ${MANIFEST_TEMPLATE}        
+              wget -O ~/repo/.templates/TAGS_TEMPLATE.md ${TAGS_TEMPLATE} 
+              wget -O ~/repo/.templates/COLLECTION_TEMPLATE.md ${COLLECTION_TEMPLATE}
+              ls ~/repo/.templates
+
+      - run:
+          name: Build Containers
+          command: |
+            cd ~/repo
+            NAMESPACE=${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
+            echo "Container namespace is $NAMESPACE"
+            # Create directory with namespace organization (pr will be based in /tmp/PR)
+            mkdir -p PR/$NAMESPACE
+            MANIFESTS=PR/$NAMESPACE/manifests
+            mkdir -p build
+            # Find all singularity recipes
+            for recipe in $(find $PWD -name "Singularity*")
+                do  
+                    container_dir=$(dirname ${recipe}.sif)
+
+                    # Only build the container if it's not frozen
+                    if [ -f "$container_dir/.frozen" ]; then
+                        echo "$container_dir/.frozen found, $recipe not marked for build."
+                        continue
+                    fi
+
+                    echo "Found changed recipe ${recipe}"
+
+                    # Get the tag based on the extension
+                    filename=$(basename -- "$recipe")
+                    container_tag="${filename##*.}"
+                    if [ "${container_tag}" == "Singularity" ]; then
+                        container_tag=latest
+                    fi
+
+                    # Generate the hash here?
+                    CONTAINER_PATH=${NAMESPACE}
+                    CONTAINER_NAME=${container_tag}.sif
+
+                    # Build with Google Build
+                    sudo gcloud builds submit . --config=~/repo/.circleci/cloudbuild.yaml --substitutions=_SINGULARITY_VERSION=3.0.2.,recipe=${recipe},GOOGLE_PROJECT_ID=${SREGISTRY_GOOGLE_PROJECT},CONTAINER_NAME=${CONTAINER_NAME,CONTAINER_PATH=${CONTAINER_PATH}
+                            
+                    #TODO: how to get digest here?
+                    # Rename image based on shasum
+                    container_name=`sha256sum ${recipe}.sif | awk '{ print $1 }'`
+
+                    echo
+                    echo "Successfully built ${recipe}"
+                    echo "   bucket    -> $SREGISTRY_GOOGLE_STORAGE_BUCKET"
+                    echo "   sha256sum -> $container_name"
+                    echo "   tag       -> $container_tag"
+ 
+                    container_size=`du -k "${recipe}.sif" | cut -f1`
+                    echo "   size       -> $container_size"
+
+                    digest=${container_name}
+
+                    # Create the README.md with the MANIFEST template
+                    export url digest container_size
+                    mkdir -p $MANIFESTS/$container_tag
+                    envsubst < ~/repo/.templates/MANIFEST_TEMPLATE.md > $MANIFESTS/$container_tag/README.md
+                    cat $MANIFESTS/$container_tag/README.md
+
+                done
+
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - repo
+            
+  deploy:
+    <<: *defaults  
+    steps:
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Update if branch is not master
+          command: |
+              echo "Detected push to master, updating GitHub pages!"    
+              NAMESPACE=${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
+              cd /tmp && git clone git@github.com:${REGISTRY_BASE}.git
+              cd $(basename ${REGISTRY_BASE})
+
+              # Set the user name and repo name
+              git config user.name "${CIRCLE_USERNAME}"
+              git config user.email "${CIRCLE_USERNAME}@users.noreply.github.com"
+
+              # Copy the entire generated content to registry
+              cp -R ~/repo/PR/* .
+                
+              # Generate the collection README, if doesn't exist
+              if [ ! -f "$NAMESPACE/README.md" ]; then
+                  cp ~/repo/.templates/COLLECTION_TEMPLATE.md $NAMESPACE/README.md
+              fi
+
+              # Generate the tags file, if it doesns't exist
+              if [ ! -f "$NAMESPACE/tags/README.md" ]; then
+                  mkdir -p $NAMESPACE/tags
+                  cp ~/repo/.templates/TAGS_TEMPLATE.md $NAMESPACE/tags/README.md
+              fi
+
+              # Checkout a new (or existing) branch
+              BRANCH_NAME=update/$NAMESPACE
+              git checkout -b "${BRANCH_NAME}" || git checkout $BRANCH_NAME
+              git add $NAMESPACE
+              git status
+              git commit -a -m "\"${BRANCH_NAME}\"" --allow-empty
+              git push origin ${BRANCH_NAME}
+
+workflows:
+  version: 2
+  build_deploy:
+    jobs:
+      - build:
+          filters:
+            branches:
+              ignore: master
+      - hold:
+          type: approval
+          requires: 
+            - build
+      - deploy:
+          requires: 
+            - hold
+          filters:
+            branches:
+              ignore: master
