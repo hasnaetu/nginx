@@ -5,7 +5,7 @@
 # Environment: Don't forget to add:
 # GOOGLE_APPLICATION_CREDENTIALS      $(cat <credential-file>.json)	
 # GOOGLE_COMPUTE_ZONE	              defaults to us-west1-a	
-# SREGISTRY_GOOGLE_PROJECT                   (grab from browser url)
+# SREGISTRY_GOOGLE_PROJECT            (grab from browser url)
 
 version: 2
 
