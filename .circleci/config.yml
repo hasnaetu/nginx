@@ -13,7 +13,8 @@ defaults: &defaults
 
     # Set working directory where repository is cloned
     working_directory: ~/repo
-    machine: true
+    docker:
+      - image: google/cloud-sdk
 
     # Environment Variables
     environment:
@@ -52,14 +53,11 @@ install: &install
     name: Install Google Cloud SDK
     command: |
         source ${BASH_ENV}
+        cd ${HOME}
         rm -rf /opt/circleci/.pyenv/
-        echo $GOOGLE_APPLICATION_CREDENTIALS > /tmp/pancakes.json
+        echo "${GOOGLE_APPLICATION_CREDENTIALS}" > /tmp/pancakes.json
         export GOOGLE_APPLICATION_CREDENTIALS=/tmp/pancakes.json
-        wget https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-233.0.0-linux-x86_64.tar.gz
-        tar -xzvf google-cloud-sdk-233.0.0-linux-x86_64.tar.gz
-        echo "export PATH=${PATH}:/home/circleci/google-cloud-sdk/bin" >> ${BASH_ENV}
-        source ${BASH_ENV}
-        sudo gcloud auth activate-service-account --key-file ${GOOGLE_APPLICATION_CREDENTIALS}
+        gcloud auth activate-service-account --key-file ${GOOGLE_APPLICATION_CREDENTIALS}
 
 createbuilder: &createbuilder
     name: Create the Google Cloud Build (Builder)
@@ -67,7 +65,7 @@ createbuilder: &createbuilder
         source ${BASH_ENV}
         cd ~/repo/.circleci/builder
         echo "Running custom build step to create Google Cloud Builder"
-        sudo gcloud builds submit --config=builder.yaml --substitutions=_SINGULARITY_VERSION="3.0.2",GOOGLE_PROJECT_ID=${SREGISTRY_GOOGLE_PROJECT} .
+        sudo gcloud builds submit --config=builder.yaml --project=${SREGISTRY_GOOGLE_PROJECT} --substitutions=_SINGULARITY_VERSION="3.0.2",_GOOGLE_PROJECT_ID="${SREGISTRY_GOOGLE_PROJECT}" .
 
 jobs:
   build:
