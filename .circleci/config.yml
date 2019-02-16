@@ -136,16 +136,20 @@ jobs:
                         container_size=$(cat output.txt | grep SIZE | cut -d' ' -f2)
                         digest=$(cat output.txt | grep MD5HASH | cut -d' ' -f2)
                         url=$(cat output.txt | grep URL | cut -d' ' -f2)
+
+                        # Clean up
+                        rm output.txt             
+
+                        # Create the README.md with the MANIFEST template
+                        export url digest container_size
+                        mkdir -p $MANIFESTS/$container_tag
+                        envsubst < ~/repo/.templates/MANIFEST_TEMPLATE.md > $MANIFESTS/$container_tag/README.md
+                        cat $MANIFESTS/$container_tag/README.md
+
+                    else
+                        echo "Build failure, see output log for details."
                     fi
  
-                    # Clean up
-                    rm output.txt             
-
-                    # Create the README.md with the MANIFEST template
-                    export url digest container_size
-                    mkdir -p $MANIFESTS/$container_tag
-                    envsubst < ~/repo/.templates/MANIFEST_TEMPLATE.md > $MANIFESTS/$container_tag/README.md
-                    cat $MANIFESTS/$container_tag/README.md
 
                 done
 
