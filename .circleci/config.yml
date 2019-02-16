@@ -126,13 +126,18 @@ jobs:
 
                     # Build with Google Build and Storage, with context as $PWD
                     cd ${container_dir}
-                    echo "Building ${NAMESPACE}:${container_tag}, output will display on finish."
+                    echo "Building ${NAMESPACE}:${container_tag}"
                     ls
-                    sregistry build --name ${NAMESPACE}:${container_tag} --outfile output.txt ${recipe} .
+
+                    # The recipe is added relatively
+                    recipe=`echo $(basename ${recipe})`
+
+                    sregistry build --name "${NAMESPACE}:${container_tag}" --outfile output.txt ${recipe} .
 
                     # If the build was a success, update the record
                     # **Important I'm not able to reproduce the Google Storage md5 hash
                     if grep -q SUCCESS output.txt; then
+
                         container_size=$(cat output.txt | grep SIZE | cut -d' ' -f2)
                         digest=$(cat output.txt | grep MD5HASH | cut -d' ' -f2)
                         url=$(cat output.txt | grep URL | cut -d' ' -f2)
@@ -147,7 +152,8 @@ jobs:
                         cat $MANIFESTS/$container_tag/README.md
 
                     else
-                        echo "Build failure, see output log for details."
+                        echo "Build failure, see output log for details.";
+                        exit 1;
                     fi
  
 
