@@ -7,6 +7,10 @@
 # GOOGLE_COMPUTE_ZONE	              defaults to us-west1-a	
 # SREGISTRY_GOOGLE_PROJECT            (grab from browser url)
 
+# Optional Variables
+# SREGISTRY_GOOGLE_BUILD_SINGULARITY_VERSION defaults to 3.0.2-slim
+# coincides with tags here https://hub.docker.com/r/singularityware/singularity
+
 version: 2
 
 defaults: &defaults
@@ -22,8 +26,8 @@ defaults: &defaults
       # The GitHub username / reponame that the container will be submit to
       - REGISTRY_BASE: singularityhub/registry-org
 
-      # Defaults for Google Storage with sregistry
-      - SREGISTRY_CLIENT: google-storage
+      # Defaults for Google Build and Google Storage Storage with sregistry
+      - SREGISTRY_CLIENT: google-build
 
       # Templates for the manifest, tags, and collection for the pull request
       - MANIFEST_TEMPLATE: https://raw.githubusercontent.com/singularityhub/registry-org/master/_templates/MANIFEST_TEMPLATE.md
@@ -50,22 +54,23 @@ env: &env
         echo "export GOOGLE_COMPUTE_ZONE=${GOOGLE_COMPUTE_ZONE}" >> ${BASH_ENV}
 
 install: &install
-    name: Install Google Cloud SDK
+    name: Install and Prepare Singularity Registry Client
     command: |
         source ${BASH_ENV}
         cd ${HOME}
-        rm -rf /opt/circleci/.pyenv/
         echo "${GOOGLE_APPLICATION_CREDENTIALS}" > /tmp/pancakes.json
         export GOOGLE_APPLICATION_CREDENTIALS=/tmp/pancakes.json
-        gcloud auth activate-service-account --key-file ${GOOGLE_APPLICATION_CREDENTIALS}
-
-createbuilder: &createbuilder
-    name: Create the Google Cloud Build (Builder)
-    command: |
-        source ${BASH_ENV}
-        cd ~/repo/.circleci/builder
-        echo "Running custom build step to create Google Cloud Builder"
-        sudo gcloud builds submit --config=builder.yaml --project=${SREGISTRY_GOOGLE_PROJECT} --substitutions=_SINGULARITY_VERSION="3.0.2",_GOOGLE_PROJECT_ID="${SREGISTRY_GOOGLE_PROJECT}" .
+        if [ ! -d "/home/circleci/conda" ]; then
+            wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+            /bin/bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/conda
+            export PATH=$HOME/conda/bin:$PATH
+            $HOME/conda/bin/python
+            git clone -b add/google-build https://www.github.com/singularityhub/sregistry-cli
+            cd sregistry-cli && /home/circleci/conda/bin/pip install .[all]
+            #$HOME/conda/bin/pip install sregistry[all]
+        else
+            echo "Miniconda and sregistry are already installed."
+        fi        
 
 jobs:
   build:
@@ -74,7 +79,10 @@ jobs:
       - checkout
       - run: *env
       - run: *install
-      - run: *createbuilder  
+      - save_cache:
+          paths:
+            - /home/circleci/conda
+          key: v1-dependencies
       - run:
           name: Get Templates
           command: |
@@ -86,7 +94,7 @@ jobs:
               ls ~/repo/.templates
 
       - run:
-          name: Build Containers
+          name: Issue Container Build
           command: |
             cd ~/repo
             NAMESPACE=${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
@@ -94,7 +102,6 @@ jobs:
             # Create directory with namespace organization (pr will be based in /tmp/PR)
             mkdir -p PR/$NAMESPACE
             MANIFESTS=PR/$NAMESPACE/manifests
-            mkdir -p build
             # Find all singularity recipes
             for recipe in $(find $PWD -name "Singularity*")
                 do  
@@ -115,27 +122,22 @@ jobs:
                         container_tag=latest
                     fi
 
-                    # Generate the hash here?
-                    CONTAINER_PATH=${NAMESPACE}
-                    CONTAINER_NAME=${container_tag}.sif
-
-                    # Build with Google Build
-                    sudo gcloud builds submit . --config=~/repo/.circleci/cloudbuild.yaml --substitutions=_SINGULARITY_VERSION=3.0.2.,recipe=${recipe},GOOGLE_PROJECT_ID=${SREGISTRY_GOOGLE_PROJECT},CONTAINER_NAME=${CONTAINER_NAME,CONTAINER_PATH=${CONTAINER_PATH}
-                            
-                    #TODO: how to get digest here?
-                    # Rename image based on shasum
-                    container_name=`sha256sum ${recipe}.sif | awk '{ print $1 }'`
-
-                    echo
-                    echo "Successfully built ${recipe}"
-                    echo "   bucket    -> $SREGISTRY_GOOGLE_STORAGE_BUCKET"
-                    echo "   sha256sum -> $container_name"
-                    echo "   tag       -> $container_tag"
+                    # Build with Google Build and Storage, with context as $PWD
+                    cd ${container_dir}
+                    ls
+                    sregistry build --name ${NAMESPACE}:${container_tag} ${recipe} 2>&1 | tee output.txt
+                    cat output.txt                   
  
-                    container_size=`du -k "${recipe}.sif" | cut -f1`
-                    echo "   size       -> $container_size"
-
-                    digest=${container_name}
+                    # If the build was a success, update the record
+                    # **Important I'm not able to reproduce the Google Storage md5 hash
+                    if grep -q SUCCESS output.txt; then
+                        container_size=$(cat output.txt | grep SIZE | cut -d' ' -f2)
+                        digest=$(cat output.txt | grep MD5HASH | cut -d' ' -f2)
+                        url=$(cat output.txt | grep URL | cut -d' ' -f2)
+                    fi
+ 
+                    # Clean up
+                    rm output.txt             
 
                     # Create the README.md with the MANIFEST template
                     export url digest container_size
