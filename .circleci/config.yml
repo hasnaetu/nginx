@@ -128,7 +128,7 @@ jobs:
                     cd ${container_dir}
                     echo "Building ${NAMESPACE}:${container_tag}, output will display on finish."
                     ls
-                    sregistry build --name ${NAMESPACE}:${container_tag} --outfile output.txt ${recipe}
+                    sregistry build --name ${NAMESPACE}:${container_tag} --outfile output.txt ${recipe} .
 
                     # If the build was a success, update the record
                     # **Important I'm not able to reproduce the Google Storage md5 hash
