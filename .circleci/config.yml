@@ -57,7 +57,7 @@ install: &install
     name: Install and Prepare Singularity Registry Client
     command: |
         source ${BASH_ENV}
-        apt-get update && apt-get install -y wget
+        apt-get update && apt-get install -y wget envsubst
         cd ${HOME}
         echo "${GOOGLE_APPLICATION_CREDENTIALS}" > /tmp/pancakes.json
         if [ ! -d "/root/conda" ]; then
