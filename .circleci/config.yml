@@ -60,7 +60,7 @@ install: &install
         apt-get update && apt-get install -y wget
         cd ${HOME}
         echo "${GOOGLE_APPLICATION_CREDENTIALS}" > /tmp/pancakes.json
-        if [ ! -d "/home/circleci/conda" ]; then
+        if [ ! -d "/root/conda" ]; then
             wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
             /bin/bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/conda
             export PATH=$HOME/conda/bin:$PATH
@@ -126,10 +126,10 @@ jobs:
 
                     # Build with Google Build and Storage, with context as $PWD
                     cd ${container_dir}
+                    echo "Building ${NAMESPACE}:${container_tag}, output will display on finish."
                     ls
-                    sregistry build --name ${NAMESPACE}:${container_tag} ${recipe} 2>&1 | tee output.txt
-                    cat output.txt                   
- 
+                    sregistry build --name ${NAMESPACE}:${container_tag} --outfile output.txt ${recipe}
+
                     # If the build was a success, update the record
                     # **Important I'm not able to reproduce the Google Storage md5 hash
                     if grep -q SUCCESS output.txt; then
