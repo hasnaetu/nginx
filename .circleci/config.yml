@@ -71,6 +71,7 @@ install: &install
         else
             echo "Miniconda and sregistry are already installed."
         fi        
+        which sregistry
 
 jobs:
   build:
@@ -97,6 +98,7 @@ jobs:
           name: Issue Container Build
           command: |
             cd ~/repo
+            export PATH=$HOME/conda/bin:$PATH
             NAMESPACE=${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
             echo "Container namespace is $NAMESPACE"
             # Create directory with namespace organization (pr will be based in /tmp/PR)
