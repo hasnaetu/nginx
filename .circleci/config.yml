@@ -60,7 +60,6 @@ install: &install
         apt-get update && apt-get install -y wget
         cd ${HOME}
         echo "${GOOGLE_APPLICATION_CREDENTIALS}" > /tmp/pancakes.json
-        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/pancakes.json
         if [ ! -d "/home/circleci/conda" ]; then
             wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
             /bin/bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/conda
@@ -99,6 +98,7 @@ jobs:
           command: |
             cd ~/repo
             export PATH=$HOME/conda/bin:$PATH
+            export GOOGLE_APPLICATION_CREDENTIALS=/tmp/pancakes.json
             NAMESPACE=${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
             echo "Container namespace is $NAMESPACE"
             # Create directory with namespace organization (pr will be based in /tmp/PR)
