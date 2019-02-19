@@ -176,7 +176,6 @@ jobs:
               cd $(basename ${REGISTRY_BASE})
 
               # Set the user name and repo name
-              ssh-keyscan github.com >> ~/.ssh/known_hosts
               git config user.name "${CIRCLE_USERNAME}"
               git config user.email "${CIRCLE_USERNAME}@users.noreply.github.com"
 
@@ -200,6 +199,7 @@ jobs:
               git add $NAMESPACE
               git status
               git commit -a -m "\"${BRANCH_NAME}\"" --allow-empty
+              ssh-keyscan github.com >> ~/.ssh/known_hosts
               git push origin ${BRANCH_NAME}
 
 workflows:
