@@ -188,14 +188,3 @@ The `.` is a stand in for the present working directory, I could have also done:
 
 
 Note that binding the directory at runtime WILL map your specified place to the directory (and not the file we saved there before) but it does NOT overwrite the file saved to the image. In other words, if we run the image again without binding, we see the original "Hello World!"
-
-
-## DRAFT OF TABLE
-
-| [GitHub](https://pages.github.com/) | nginx | | Google Storage | CircleCI | Google Cloud Build |
-| [GitHub](https://pages.github.com/) | | | Google Storage | Github | Google Cloud Build |
-| [GitHub](https://pages.github.com/) | | |  TravisCI artifacts | TravisCI | TravisCI |
-| [GitHub](https://pages.github.com/) | | |  Google Storage | TravisCI | TravisCI |
-| [GitHub](https://pages.github.com/) | | | Google Storage | TravisCI | Google Cloud Build |
-| [GitHub](https://pages.github.com/) | | | Google Storage | Github | Google Cloud Build |
-| [Google](https://cloud.google.com/source-repositories/) | | | Google Storage | | Google Cloud Build |
