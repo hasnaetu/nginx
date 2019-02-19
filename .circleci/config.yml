@@ -147,6 +147,9 @@ jobs:
                         export url digest container_size
                         mkdir -p $MANIFESTS/$container_tag
                         envsubst < ~/repo/.templates/MANIFEST_TEMPLATE.md > $MANIFESTS/$container_tag/README.md
+
+                        # The template assumes md5sum, not the case
+                        sed -i -e 's/sha256:/md5:/g' $MANIFESTS/$container_tag/README.md
                         cat $MANIFESTS/$container_tag/README.md
 
                     else
