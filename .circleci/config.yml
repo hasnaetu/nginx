@@ -174,7 +174,7 @@ jobs:
           command: |
               echo "Detected push to master, updating GitHub pages!"    
               NAMESPACE=${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
-              cd /tmp && git clone git@github.com:${REGISTRY_BASE}.git
+              cd /tmp && git clone https://www.github.com/${REGISTRY_BASE}
               cd $(basename ${REGISTRY_BASE})
 
               # Set the user name and repo name
