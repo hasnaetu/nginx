@@ -172,6 +172,12 @@ jobs:
           command: |
               echo "Detected push to master, updating GitHub pages!"    
               NAMESPACE=${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
+
+              mkdir -p $HOME/.ssh
+              mkdir -p /home/circleci/.ssh
+              ssh-keyscan github.com >> ~/.ssh/known_hosts
+              ssh-keyscan github.com >> /home/circleci/.ssh/known_hosts
+
               cd /tmp && git clone git@github.com:${REGISTRY_BASE}.git
               cd $(basename ${REGISTRY_BASE})
 
@@ -199,10 +205,7 @@ jobs:
               git add $NAMESPACE
               git status
               git commit -a -m "\"${BRANCH_NAME}\"" --allow-empty
-              mkdir -p $HOME/.ssh
-              ssh-keyscan github.com >> ~/.ssh/known_hosts
-              ssh-keyscan github.com >> /home/circleci/.ssh/known_hosts
-              git push origin ${BRANCH_NAME}
+              git push origin ${BRANCH_NAME} --force
 
 workflows:
   version: 2
