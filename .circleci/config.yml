@@ -64,9 +64,7 @@ install: &install
             wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
             /bin/bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/conda
             export PATH=$HOME/conda/bin:$PATH
-            git clone -b add/google-build https://www.github.com/singularityhub/sregistry-cli
-            cd sregistry-cli && $HOME/conda/bin/pip install .[all]
-            #$HOME/conda/bin/pip install sregistry[all]
+            $HOME/conda/bin/pip install sregistry[all]
         else
             echo "Miniconda and sregistry are already installed."
         fi        
