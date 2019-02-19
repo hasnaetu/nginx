@@ -179,6 +179,9 @@ jobs:
               git config user.name "${CIRCLE_USERNAME}"
               git config user.email "${CIRCLE_USERNAME}@users.noreply.github.com"
 
+              mkdir -p $HOME/.ssh
+              ssh-keyscan github.com >> ~/.ssh/known_hosts
+
               # Copy the entire generated content to registry
               cp -R ~/repo/PR/* .
                 
@@ -199,7 +202,6 @@ jobs:
               git add $NAMESPACE
               git status
               git commit -a -m "\"${BRANCH_NAME}\"" --allow-empty
-              ssh-keyscan github.com >> ~/.ssh/known_hosts
               git push origin ${BRANCH_NAME}
 
 workflows:
