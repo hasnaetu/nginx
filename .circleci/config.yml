@@ -24,7 +24,7 @@ defaults: &defaults
     environment:
 
       # The GitHub username / reponame that the container will be submit to
-      - REGISTRY_BASE: singularityhub/registry-org
+      - REGISTRY_BASE: hasnaeetu/registry-org
 
       # Defaults for Google Build and Google Storage Storage with sregistry
       - SREGISTRY_CLIENT: google-build
