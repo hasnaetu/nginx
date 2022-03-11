@@ -1,230 +1,26 @@
-# Python CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-python/ for more details
-# 
-# Environment: Don't forget to add:
-# GOOGLE_APPLICATION_CREDENTIALS      $(cat <credential-file>.json)	
-# GOOGLE_COMPUTE_ZONE	              defaults to us-west1-a	
-# SREGISTRY_GOOGLE_PROJECT            (grab from browser url)
+# Use the latest 2.1 version of CircleCI pipeline process engine.
+# See: https://circleci.com/docs/2.0/configuration-reference
+version: 2.1
 
-# Optional Variables
-# SREGISTRY_GOOGLE_BUILD_SINGULARITY_VERSION defaults to 3.0.2-slim
-# coincides with tags here https://hub.docker.com/r/singularityware/singularity
-
-version: 2
-
-defaults: &defaults
-
-    # Set working directory where repository is cloned
-    working_directory: ~/repo
-    docker:
-      - image: google/cloud-sdk
-
-    # Environment Variables
-    environment:
-
-      # The GitHub username / reponame that the container will be submit to
-      - REGISTRY_BASE: singularityhub/registry-org
-
-      # Defaults for Google Build and Google Storage Storage with sregistry
-      - SREGISTRY_CLIENT: google-build
-
-      # Templates for the manifest, tags, and collection for the pull request
-      - MANIFEST_TEMPLATE: https://raw.githubusercontent.com/singularityhub/registry-org/master/_templates/MANIFEST_TEMPLATE.md
-      - TAGS_TEMPLATE: https://raw.githubusercontent.com/singularityhub/registry-org/master/_templates/TAGS_TEMPLATE.md
-      - COLLECTION_TEMPLATE: https://raw.githubusercontent.com/singularityhub/registry-org/master/_templates/COLLECTION_TEMPLATE.md
-
-
-# Here is where we check and set environment variables
-env: &env
-    name: Check for Environment Variables
-    command: |
-        if [ -z "${SREGISTRY_GOOGLE_PROJECT}" ]; then
-              echo "Please export SREGISTRY_GOOGLE_PROJECT"
-              exit 1
-        fi
-        if [ -z "${SREGISTRY_GOOGLE_STORAGE_BUCKET}" ]; then
-            SREGISTRY_GOOGLE_STORAGE_BUCKET="sregistry-${SREGISTRY_GOOGLE_PROJECT}"
-        fi
-        if [ -z "${GOOGLE_COMPUTE_ZONE}" ]; then
-            GOOGLE_COMPUTE_ZONE="us-west1-a"
-        fi
-        echo "export SREGISTRY_GOOGLE_PROJECT=${SREGISTRY_GOOGLE_PROJECT}" >> ${BASH_ENV}
-        echo "export SREGISTRY_GOOGLE_STORAGE_BUCKET=${SREGISTRY_GOOGLE_STORAGE_BUCKET}" >> ${BASH_ENV}
-        echo "export GOOGLE_COMPUTE_ZONE=${GOOGLE_COMPUTE_ZONE}" >> ${BASH_ENV}
-
-install: &install
-    name: Install and Prepare Singularity Registry Client
-    command: |
-        source ${BASH_ENV}
-        apt-get update && apt-get install -y wget gettext-base
-        cd ${HOME}
-        echo "${GOOGLE_APPLICATION_CREDENTIALS}" > /tmp/pancakes.json
-        if [ ! -d "/root/conda" ]; then
-            wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-            /bin/bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/conda
-            export PATH=$HOME/conda/bin:$PATH
-            $HOME/conda/bin/pip install sregistry[all]
-        else
-            echo "Miniconda and sregistry are already installed."
-        fi        
-        which sregistry
-
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  build:
-    <<: *defaults  
+  say-hello:
+    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
+    docker:
+      - image: cimg/base:stable
+    # Add steps to the job
+    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout
-      - run: *env
-      - run: *install
-      - save_cache:
-          paths:
-            - /home/circleci/conda
-          key: v1-dependencies
       - run:
-          name: Get Templates
-          command: |
-              echo "Download Manifest, Tags, and Collection Templates!"
-              mkdir -p ~/repo/.templates
-              wget -O ~/repo/.templates/MANIFEST_TEMPLATE.md ${MANIFEST_TEMPLATE}        
-              wget -O ~/repo/.templates/TAGS_TEMPLATE.md ${TAGS_TEMPLATE} 
-              wget -O ~/repo/.templates/COLLECTION_TEMPLATE.md ${COLLECTION_TEMPLATE}
-              ls ~/repo/.templates
+          name: "Say hello"
+          command: "echo Hello, World!"
 
-      - run:
-          name: Issue Container Build
-          command: |
-            cd ~/repo
-            export PATH=$HOME/conda/bin:$PATH
-            export GOOGLE_APPLICATION_CREDENTIALS=/tmp/pancakes.json
-            NAMESPACE=${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
-            echo "Container namespace is $NAMESPACE"
-            # Create directory with namespace organization (pr will be based in /tmp/PR)
-            mkdir -p PR/$NAMESPACE
-            MANIFESTS=PR/$NAMESPACE/manifests
-            # Find all singularity recipes
-            for recipe in $(find $PWD -name "Singularity*")
-                do  
-                    container_dir=$(dirname ${recipe}.sif)
-
-                    # Only build the container if it's not frozen
-                    if [ -f "$container_dir/.frozen" ]; then
-                        echo "$container_dir/.frozen found, $recipe not marked for build."
-                        continue
-                    fi
-
-                    echo "Found changed recipe ${recipe}"
-
-                    # Get the tag based on the extension
-                    filename=$(basename -- "$recipe")
-                    container_tag="${filename##*.}"
-                    if [ "${container_tag}" == "Singularity" ]; then
-                        container_tag=latest
-                    fi
-
-                    # Build with Google Build and Storage, with context as $PWD
-                    cd ${container_dir}
-                    echo "Building ${NAMESPACE}:${container_tag}"
-                    ls
-
-                    # The recipe is added relatively
-                    recipe=`echo $(basename ${recipe})`
-
-                    sregistry build --name "${NAMESPACE}:${container_tag}" --outfile output.txt ${recipe} .
-
-                    # If the build was a success, update the record
-                    # **Important I'm not able to reproduce the Google Storage md5 hash
-                    if grep -q SUCCESS output.txt; then
-
-                        container_size=$(cat output.txt | grep SIZE | cut -d' ' -f2)
-                        digest=$(cat output.txt | grep MD5HASH | cut -d' ' -f2)
-                        url=$(cat output.txt | grep URL | cut -d' ' -f2)
-
-                        # Clean up
-                        rm output.txt             
-
-                        # Create the README.md with the MANIFEST template
-                        export url digest container_size
-                        mkdir -p $MANIFESTS/$container_tag
-                        envsubst < ~/repo/.templates/MANIFEST_TEMPLATE.md > $MANIFESTS/$container_tag/README.md
-
-                        # The template assumes md5sum, not the case
-                        sed -i -e 's/sha256:/md5:/g' $MANIFESTS/$container_tag/README.md
-                        cat $MANIFESTS/$container_tag/README.md
-
-                    else
-                        echo "Build failure, see output log for details.";
-                        exit 1;
-                    fi
- 
-
-                done
-
-      - persist_to_workspace:
-          root: ~/
-          paths:
-            - repo
-            
-  deploy:
-    <<: *defaults  
-    steps:
-      - attach_workspace:
-          at: ~/
-      - run:
-          name: Update if hold is released (and not master)
-          command: |
-              echo "Detected push to master, updating GitHub pages!"    
-              NAMESPACE=${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}
-
-              mkdir -p $HOME/.ssh
-              mkdir -p /home/circleci/.ssh
-              ssh-keyscan github.com >> ~/.ssh/known_hosts
-              ssh-keyscan github.com >> /home/circleci/.ssh/known_hosts
-
-              cd /tmp && git clone git@github.com:${REGISTRY_BASE}.git
-              cd $(basename ${REGISTRY_BASE})
-
-              # Set the user name and repo name
-              git config user.name "${CIRCLE_USERNAME}"
-              git config user.email "${CIRCLE_USERNAME}@users.noreply.github.com"
-
-              # Copy the entire generated content to registry
-              cp -R ~/repo/PR/* .
-                
-              # Generate the collection README, if doesn't exist
-              if [ ! -f "$NAMESPACE/README.md" ]; then
-                  cp ~/repo/.templates/COLLECTION_TEMPLATE.md $NAMESPACE/README.md
-              fi
-
-              # Generate the tags file, if it doesns't exist
-              if [ ! -f "$NAMESPACE/tags/README.md" ]; then
-                  mkdir -p $NAMESPACE/tags
-                  cp ~/repo/.templates/TAGS_TEMPLATE.md $NAMESPACE/tags/README.md
-              fi
-
-              # Checkout a new (or existing) branch
-              BRANCH_NAME=update/$NAMESPACE
-              git checkout -b "${BRANCH_NAME}" || git checkout $BRANCH_NAME
-              git add $NAMESPACE
-              git status
-              git commit -a -m "\"${BRANCH_NAME}\"" --allow-empty
-              git push origin ${BRANCH_NAME} --force
-
+# Invoke jobs via workflows
+# See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  version: 2
-  build_deploy:
+  say-hello-workflow:
     jobs:
-      - build:
-          filters:
-            branches:
-              ignore: master
-      - hold:
-          type: approval
-          requires: 
-            - build
-      - deploy:
-          requires: 
-            - hold
-          filters:
-            branches:
-              ignore: master
+      - say-hello
