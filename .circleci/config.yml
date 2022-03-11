@@ -3,7 +3,19 @@
 # Check https://circleci.com/docs/2.0/language-python/ for more details
 # 
 # Environment: Don't forget to add:
-# GOOGLE_APPLICATION_CREDENTIALS      $(cat <credential-file>.json)	
+# GOOGLE_APPLICATION_CREDENTIALS      
+{
+  "type": "service_account",
+  "project_id": "webserver-343809",
+  "private_key_id": "e9f95a901efff8d30cab0e4460411466019769ca",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCmoWLrxk6pAigJ\ndzA4bAu9Tl2noW9CfccNSUH49my9T3VeprZD2DLpPco8HXewaoFUyykGAAtxvKLa\nwgUmDae5ZuPADlWwloChiU4F8EXdOgq8ypSwnX6PlHez+Ey5Oam7oNXtPx7dKKzX\nOaOjKyhfMDdjmrVKaJZpvG/K683LfjxbplbL/gJX7Aucit57xFEZmXC11U/A9Wjp\nacLpM9ObXidx3rr9GhIDfUhSm27DBCwbY/8GuDcQXNP938QOIYjJshTxOqy+2nPW\ns9Y9ZzTWURiqynvxQ0koSU5O12etY827tizaETXjJc+XmPawy0CUcPeFaTOF1QHV\nup1i5l67AgMBAAECggEAGX3TDlLWMdDcoyYSwG73FMzqUvzFcpyfWQ7+AsJgPE3t\nnL9QXuyyTTBgwfWYG+sPQhOagQp8tbewCltoQjwQjrKI4RbQUSWVJCFHSG1Lot6A\nSgWL3cEaXYjPDz9LLYL+zm96isL/S8IvPvXYbNvrXzSXJKvEVE/PwvlK+PY+E4VL\nJCTLQyDT5L1bctdLe6uTQLLj64uEof2sv6vvUPejWJpp/TP7wqttycQNdbRZTpo5\nqkxdbShbX8YzzcLukoXSdEknkwf+86/PiPL3kYLRqBvmpG44eACgi3l/VzPSepGv\npgOLkYXHwLdSV/t1ZXdjV5lV9b4Dp5OwGLFA75/oUQKBgQDW6tvDBpjRuO0ak7uy\nHpAaJJfEtPNwDOpaW14u/w3z3blTFM4uxtDWLu18OeV1LL97mdVLgF7eQR9wjsON\nQ5VvRGpmVu3CfbBQz+f1gcMcYGtI3J/351b8Cc9cMLftqopneP6lwAf15kSwnIrz\nz/DHYWcWsV1hwv4/Vzr55KZtxwKBgQDGe5Fyu4l4/o/Qf+EJ3nqp9BVrSke/mDQl\np2h+st5sRYo1WZe/xfV4xioxeJ62qiU5qMa6oqVSRQL6cNPk8cG/E+u2qqcmuetK\n/ic5Uojl4Vq8i2Ywvg9r6PTyJp8aC7sPWhNBUQ1alMblfyuyeZNQ7uXI88+GPjvu\nqFbYbW1XbQKBgQCogHUTAH4amEnV95RGv+2tgZk4kcL3zDiF5XL/l9uhouqld/97\n70dXVm2+Y0pDR3VN/DueOaSnzxlOT7CEdkOYfGSLnoZFYfQ2N/ueokGOYw5ajxgg\n7tFlRG++0Tez8G0ZWWUWIWxcYFDkw6eyJwuZ1wVTZnZXquFaWhMUUDAoiwKBgHRI\nEodQHZMYODMjqDi68cw95oqL4wr5ZZulv09zBWITP4xP59p/ZHeUSUXgb8N+XP6x\nxXO0M/zF15/XmBxqEmMajZ7fzbufcpzl1x77Hp7m7tzFImJuBuTmfxKa091TgAzX\nba53iMZHoVr0rSoLleX1gAPB6xOvxDbmwrJbMZLlAoGBAKOrgO++Ss4/drOV997f\nIEeTUQ04De/c81cw1Q/mammGYpOzX+eHXyIy9PqjlHXzguT323Kx3CCw2ay8jaUl\nOAm+axZbvzkvk3HhdTF4JIufGSbaoWz2uhpOgGLlZLLuDrR6aZqb9kT8LBuW3HGc\nqSGAlDM2Ht/ic3XNr9my8gdq\n-----END PRIVATE KEY-----\n",
+  "client_email": "webserver@webserver-343809.iam.gserviceaccount.com",
+  "client_id": "104162348589891132963",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/webserver%40webserver-343809.iam.gserviceaccount.com"
+}
 # GOOGLE_COMPUTE_ZONE	              defaults to us-west1-a	
 # SREGISTRY_GOOGLE_PROJECT            (grab from browser url)
 
